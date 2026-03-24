@@ -27,6 +27,23 @@ def get_data_from_file(filepath):
     with open(filepath, "r") as f:
         return json.load(f)
 
+def build_daily_urls(endpoint, days):
+    # build one url per day for the last N days -> returns list of urls
+    urls = []
+    for i in range(1, days+1):
+        target = date.today() - timedelta(days=i)
+        year = target.strftime("%Y")
+        month = target.strftime("%m")
+        day = target.strftime("%d")
+        # year month day wildcard matches any index containg that date regardles of prefix 
+        url = (
+            f"https://{endpoint}/_cat/indices/" 
+            f""*{year}*{month}*{day}"  
+            f"?v&h=index,store.size,pri&format=json&bytes=b" 
+        )
+        urls.append(url)
+    return urls
+    
 def main():
     parser = argparse.ArgumentParser(description="Process index data.")
     parser.add_argument("--endpoint", type=str, default="",
