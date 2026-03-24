@@ -1,5 +1,25 @@
 import argparse
 import sys
+import math
+import sys
+import json 
+import requests
+from datetime import date, timedelta
+
+
+'''
+Go through index data from local json file or live elascicserach.
+Produce three reports:
+1. Top 5 indexes by size (GB)
+2. Top 5 indexes by shard count
+3. Top 5 shard offendors : indexes with the largest difference between the largest and smallest shard size (GB)
+'''
+
+#Constants
+BYTES_PER_GB = 1_073_741_824
+SHARD_TARGET_GB = 30
+TOP_N = 5
+REQUEST_TIMEOUT = 10
 
 def main():
     parser = argparse.ArgumentParser(description="Process index data.")
