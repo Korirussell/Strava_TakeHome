@@ -21,6 +21,12 @@ SHARD_TARGET_GB = 30
 TOP_N = 5
 REQUEST_TIMEOUT = 10
 
+#Data ingestion
+def get_data_from_file(filepath):
+    # Read index data from local json file -> returns list of index data
+    with open(filepath, "r") as f:
+        return json.load(f)
+
 def main():
     parser = argparse.ArgumentParser(description="Process index data.")
     parser.add_argument("--endpoint", type=str, default="",
