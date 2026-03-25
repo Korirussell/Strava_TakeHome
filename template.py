@@ -1,8 +1,7 @@
 import argparse
 import sys
 import math
-import sys
-import json 
+import json
 import requests
 from datetime import date, timedelta
 
@@ -39,8 +38,8 @@ def build_daily_urls(endpoint, days):
         # year month day wildcard matches any index containg that date regardles of prefix 
         url = (
             f"https://{endpoint}/_cat/indices/" 
-            f""*{year}*{month}*{day}"  
-            f"?v&h=index,store.size,pri&format=json&bytes=b" 
+            f"*{year}*{month}*{day}"  
+            f"?v&h=index,pri.store.size,pri&format=json&bytes=b" 
         )
         urls.append(url)
     return urls
@@ -57,7 +56,7 @@ def get_data_from_server(endpoint, days):
 
 # normalize + math helper functions
 def bytes_to_gb(bytes):
-    return bytes / BYTES_PER_GB
+    return int(bytes) / float(BYTES_PER_GB)
 
 def recommended_shards(size_gb):
     # 1 shard per 30GB of data, round up to ensure we don't exceed target shard size
@@ -66,8 +65,10 @@ def recommended_shards(size_gb):
 def normalize(raw_records):
     records = []
     for raw in raw_records:
-        size_gb = bytes_to_gb(raw.get("pri.store.size") or "0")
-        shards = int(raw.get("pri") or "0")
+        raw_size = raw.get("pri.store.size") or "0"
+        raw_pri = raw.get("pri") or "1"
+        size_gb = bytes_to_gb(raw_size)
+        shards = int(raw_pri)
         records.append({
             "name": raw["index"],
             "size_gb": size_gb,
@@ -75,6 +76,48 @@ def normalize(raw_records):
             "recommended_shards": recommended_shards(size_gb),
         })
     return records
+
+# print largest index
+def print_largest_indexes(records: list[dict]) -> None:
+    top = sorted(records, key=lambda r: r["size_gb"], reverse=True)[:TOP_N]
+
+    print("\n" + "┌" + "─"*60 + "┐") # necessary pretty borders
+    print(f"│ Report 1: Top {TOP_N} Indexes by Size (GB)                       │") 
+    print("└" + "─" * 60 + "┘")
+    print(f" {'Rank' :<6} {'Size (GB)':>10}    Index Name")
+    print(f" {'─'*7} {'─'*10}   {'─'*40}")
+
+    for rank, r in enumerate(top, start=1):
+        print(f" {rank:<6} {r['size_gb']:>10.2f}    {r['name']}")
+
+# print most shards
+def print_most_shards(records) :
+    top = sorted(records, key=lambda r: r["shards"], reverse=True)[:TOP_N]
+
+    print("\n" + "┌" + "─"*60 + "┐") # necessary pretty borders
+    print(f"│ Report 2: Top {TOP_N} Indexes by Shard Count                     │") 
+    print("└" + "─" * 60 + "┘")
+    print(f" {'Rank' :<6} {'Shards':>8}    Index Name")
+    print(f" {'─'*7} {'─'*10}   {'─'*40}")
+
+    for rank, r in enumerate(top, start=1):
+        print(f" {rank:<6} {r['shards']:>8}    {r['name']}")
+
+#print least balanced
+def print_least_balanced(records) :
+    offendors = [r for r in records if r["shards"] < r["recommended_shards"]]
+    top = sorted(offendors, key=lambda r: r["size_gb"] / r["shards"] if r["shards"] > 0 else float("inf"), reverse=True)[:TOP_N]
+
+    print("\n" + "┌" + "─"*60 + "┐") # necessary pretty borders
+    print(f"│ Report 3: Top {TOP_N} Under Shared Indexes                       │") 
+    print("└" + "─" * 60 + "┘")
+    print(f" {'Rank' :<6} {'Current':>9}     {'Recommended':>13}    Index Name")
+    print(f" {'─'*7} {'─'*10}   {'─'*40}")
+
+    for rank, r in enumerate(top, start=1):
+        print(f" {rank:<6} {r['shards']:>9}     {r['recommended_shards']:>13}    {r['name']}")
+
+
 
 def main():
     parser = argparse.ArgumentParser(description="Process index data.")
@@ -99,9 +142,11 @@ def main():
         except Exception as err:
             sys.exit("Error reading data from API endpoint. Error: " + str(err))
 
-    print_largest_indexes(data)
-    print_most_shards(data)
-    print_least_balanced(data)
+    records = normalize(data) # data normalized
+
+    print_largest_indexes(records)
+    print_most_shards(records)
+    print_least_balanced(records)
 
 if __name__ == '__main__':
     main()
