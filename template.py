@@ -109,7 +109,7 @@ def print_least_balanced(records) :
     top = sorted(offendors, key=lambda r: r["size_gb"] / r["shards"] if r["shards"] > 0 else float("inf"), reverse=True)[:TOP_N]
 
     print("\n" + "┌" + "─"*60 + "┐") # necessary pretty borders
-    print(f"│ Report 3: Top {TOP_N} Under Shared Indexes                       │") 
+    print(f"│ Report 3: Top {TOP_N} Under Sharded Indexes                       │") 
     print("└" + "─" * 60 + "┘")
     print(f" {'Rank' :<6} {'Current':>9}     {'Recommended':>13}    Index Name")
     print(f" {'─'*7} {'─'*10}   {'─'*40}")
